@@ -151,9 +151,9 @@ All errors use **RFC 9457 `application/problem+json`**. Validation errors includ
 |---|---|---|
 | **Choreography saga** (events, no central orchestrator) | Only two services and one step. Each service reacts to the other's events, so coupling stays low. | The overall flow is implicit. With more steps (payment, shipping), an orchestrator would be easier to understand. |
 | **Database per service** (`order_db`, `inventory_db`) | Each service owns its data. Neither reads the other's tables. | No cross-service joins or ACID transactions, so we rely on eventual consistency. |
-| **PostgreSQL** instead of Couchbase | The assignment allows it. Stock reservation needs row locking and multi-row atomic updates, which a relational DB handles naturally. | The schema is more rigid. Migrations are managed with Flyway. |
+| **PostgreSQL** instead of Couchbase | Stock reservation needs row locking and multi-row atomic updates, which a relational DB handles naturally. | The schema is more rigid. Migrations are managed with Flyway. |
 | **`POST` returns `201` with status `PENDING`** | The order resource exists as soon as the request succeeds. Only the reservation happens asynchronously. The client polls `GET`. | `202 Accepted` is also defensible. Production would add webhooks or SSE so clients don't need to poll. |
-| **Kafka message key = `orderId`** | All events for an order go to the same partition, so they stay in order. | A very hot customer or order cannot be spread across partitions (not a concern here). |
+| **Kafka message key = `orderId`** | All events for an order go to the same partition, so they stay in order. | An order cannot be spread across partitions (not a concern here). |
 | **Publish after commit** (`@TransactionalEventListener(AFTER_COMMIT)`) | Consumers never see an order that was rolled back. | If Kafka is down at that moment, the event is lost. See limitations: the fix is an outbox. |
 | **Idempotent consumers** | Kafka delivers *at least once*. Inventory stores one `reservations` row per `orderId`; a redelivery returns the stored outcome instead of decrementing stock again. Order ignores results for orders that are no longer `PENDING`. | Needs one extra table and a lookup per message. |
 | **Inventory: commit, then send synchronously** | If the send fails, the listener throws. The offset is not committed and the record is redelivered. Because processing is idempotent, the stored outcome is simply published again, giving at-least-once delivery without an outbox. | The listener blocks on the send (bounded by `send-timeout-ms`). This is cheap because it runs on a virtual thread. |
@@ -186,12 +186,8 @@ mvn test
 
 ## 5. Known limitations and next steps
 
-1. **No transactional outbox in Order Service.** If Kafka is unavailable right after an order commits, the event is lost and the order stays `PENDING`. *Next:* write the event to an `outbox` table in the same transaction and relay it with a poller or Debezium CDC. A stale-`PENDING` sweeper is a cheaper stopgap.
+1. **No transactional outbox in Order Service.** If Kafka is unavailable right after an order commits, the event is lost and the order stays `PENDING`. *Next:* write the event to an `outbox` table in the same transaction and relay it with a poller.
 2. **No compensation or cancellation.** Reserved stock is never released (no cancel endpoint or reservation timeout). *Next:* `OrderCancelled` event → Inventory releases stock using the lines stored with the reservation.
-3. **No API idempotency key.** A client retrying `POST` creates a duplicate order. *Next:* support an `Idempotency-Key` header with a unique constraint.
-4. **Integration tests are not included.** Unit and slice tests only. *Next:* an embedded-Kafka or Testcontainers end-to-end test that creates an order and waits for `CONFIRMED` using Awaitility.
-5. **Security.** There is no authentication or authorization, and credentials are plain env vars. *Next:* OAuth2 resource server, externalised secrets, and TLS/SASL for Kafka.
-6. **Observability.** Only logs carry the `orderId` (MDC) and `/actuator/health` is exposed. *Next:* Micrometer metrics (consumer lag, DLT count), OpenTelemetry tracing across Kafka headers, and a correlation ID from the HTTP request.
-7. **Single-broker Kafka, replication factor 1.** This is for local development only.
-8. **Pricing is supplied by the client** (see trade-offs).
-9. **DLT replay tooling** is not implemented.
+3. **Security.** There is no authentication or authorization, and credentials are plain env vars. *Next:* OAuth2 resource server, externalised secrets, and TLS/SASL for Kafka.
+4. **Observability.** Only logs carry the `orderId` (MDC) and `/actuator/health` is exposed. *Next:* Micrometer metrics.
+5. **DLT replay tooling** is not implemented.

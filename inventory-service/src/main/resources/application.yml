@@ -11,8 +11,8 @@ spring:
 
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/inventory_db}
-    username: ${DB_USERNAME:sky}
-    password: ${DB_PASSWORD:sky}
+    username: ${DB_USERNAME:XXXX}
+    password: ${DB_PASSWORD:XXXX}
 
   jpa:
     open-in-view: false
