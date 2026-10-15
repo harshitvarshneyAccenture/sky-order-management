@@ -1,0 +1,75 @@
+server:
+  port: ${SERVER_PORT:8081}
+
+spring:
+  application:
+    name: order-service
+
+  threads:
+    virtual:
+      enabled: true               # JDK 21 virtual threads (Tomcat requests + @KafkaListener containers)
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/order_db}
+    username: ${DB_USERNAME:sky}
+    password: ${DB_PASSWORD:sky}
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate          # schema is owned by Flyway, Hibernate only validates it
+    properties:
+      hibernate.jdbc.time_zone: UTC
+
+  flyway:
+    enabled: true
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JacksonJsonSerializer   # Jackson 3
+      acks: all
+      properties:
+        enable.idempotence: true
+        spring.json.add.type.headers: false      # contract is the JSON shape, not a Java class name
+    consumer:
+      group-id: order-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JacksonJsonDeserializer
+        spring.json.value.default.type: com.sky.ordermanagement.common.event.InventoryReservationResultEvent
+        spring.json.use.type.headers: false
+        spring.json.trusted.packages: com.sky.ordermanagement.common.event
+    listener:
+      concurrency: 3
+
+sky:
+  oms:
+    kafka:
+      partitions: 3
+      retry:
+        interval-ms: 1000
+        max-attempts: 3
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+logging:
+  pattern:
+    level: "%5p [${spring.application.name:},orderId=%X{orderId:-}]"
+  level:
+    com.sky.ordermanagement: INFO
+    org.apache.kafka: WARN
