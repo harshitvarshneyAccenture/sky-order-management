@@ -27,7 +27,7 @@ It has two services that talk to each other asynchronously through Kafka events.
 ```bash
 psql -U postgres -f docs/create-databases.sql
 ```
-This creates the user `sky`/`sky` and the databases `order_db` and `inventory_db`. Flyway creates the tables and seeds the demo stock when the services start.
+This creates the user `XXXX`/`XXXX` and the databases `order_db` and `inventory_db`. Flyway creates the tables and seeds the demo stock when the services start.
 
 > To use an existing user or database instead, set `DB_URL`, `DB_USERNAME` and `DB_PASSWORD` (see Configuration below).
 
@@ -84,7 +84,7 @@ More sample requests are in [`docs/requests.http`](docs/requests.http). You can 
 | Variable | Default |
 |---|---|
 | `DB_URL` | `jdbc:postgresql://localhost:5432/order_db` (or `inventory_db`) |
-| `DB_USERNAME` / `DB_PASSWORD` | `sky` / `sky` |
+| `DB_USERNAME` / `DB_PASSWORD` | `XXXX` / `XXXX` |
 | `KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` |
 | `SERVER_PORT` | `8081` / `8082` |
 
