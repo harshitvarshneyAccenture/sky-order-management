@@ -191,3 +191,4 @@ mvn test
 3. **Security.** There is no authentication or authorization, and credentials are plain env vars. *Next:* OAuth2 resource server, externalised secrets, and TLS/SASL for Kafka.
 4. **Observability.** Only logs carry the `orderId` (MDC) and `/actuator/health` is exposed. *Next:* Micrometer metrics.
 5. **DLT replay tooling** is not implemented.
+6. **Encrypt/Decrypt YML Passwords - Use Security Mechanisms.
